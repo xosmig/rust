@@ -51,6 +51,7 @@ use core::slice;
 use boxed::Box;
 
 const B: usize = 6;
+pub const MIN_LEN: usize = B - 1;
 pub const CAPACITY: usize = 2 * B - 1;
 
 /// The underlying representation of leaf nodes. Note that it is often unsafe to actually store
@@ -231,6 +232,10 @@ impl<K, V> Root<K, V> {
         }
 
         ret
+    }
+
+    pub fn is_leaf(&self) -> bool {
+        self.height == 0
     }
 
     /// Removes the root node, using its first child as the new root. This cannot be called when
@@ -1385,6 +1390,12 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             }
         }
     }
+
+    /// Symmetric clone of `bulk_steal_left`.
+    /// This does stealing similar to `steal_right` but steals multiple elements at once.
+    pub fn bulk_steal_right(&mut self, n: usize) {
+        //TODO
+    }
 }
 
 impl<BorrowType, K, V, HandleType>
@@ -1436,37 +1447,8 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
 
 impl<'a, K, V, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::Edge> {
     // отрезает от ноды все, что правее этого ребра, делает из них новую ноду и кладет в `right`
-    pub fn cut_right(&mut self, node_right: &mut NodeRef<marker::Mut<'a>, K, V, NodeType>) {
-        
-        {
-            
-            /*let cur_edge = unsafe { self.reborrow_mut() };
-            while let Ok(cur_kv) = cur_edge.right_node() {
-
-
-                cur_edge = cur_kv.right_edge();
-            }*/
-            
-        }
-    }
-}
-
-impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
-    // перераспределяет значения, чтобы в правом сыне было хотя бы `B` штук
-    pub fn fix_right(&mut self) {
-        // necessary for correctness, but in a private module
-        debug_assert!(self.reborrow().left_edge().descend().len()
-                    + self.reborrow().right_edge().descend().len()
-                    >= (B - 1) + B);
-
-        // TODO
-    }
-
-    // перераспределяет значения, чтобы в левом сыне было хотя бы `B` штук
-    // symmetric clone of `fix_right`
-    pub fn fix_left(&mut self) {
-        // TODO
-    }
+    // pub fn cut_right(&mut self, edge_right: &mut Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>) {
+    // }
 }
 
 pub enum ForceResult<Leaf, Internal> {

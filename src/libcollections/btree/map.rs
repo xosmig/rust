@@ -842,13 +842,13 @@ impl<K: Ord, V> BTreeMap<K, V> {
             // Check if right-most child is underfull.
             let mut last_edge = internal.last_edge();
             let right_child_len = last_edge.reborrow().descend().len();
-            if right_child_len < node::CAPACITY / 2 {
+            if right_child_len < node::MIN_LEN {
                 // We need to steal.
                 let mut last_kv = match last_edge.left_kv() {
                     Ok(left) => left,
                     Err(_) => unreachable!(),
                 };
-                last_kv.bulk_steal_left(node::CAPACITY/2 - right_child_len);
+                last_kv.bulk_steal_left(node::MIN_LEN - right_child_len);
                 last_edge = last_kv.right_edge();
             }
 
@@ -876,11 +876,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
             return (Self::new(), Self::new())
         }
 
-        let mut right = Self::new();
+        // let mut right = Self::new();
+        // right_edge
 
         {
             let mut node_left = self.root.as_mut();
-            let mut edge_right = right.root.as_mut().first_edge();
+            // let mut edge_right = right.root.as_mut();
 
             loop {
                 let split_edge = match search::search_node(node_left, key) {
@@ -894,22 +895,24 @@ impl<K: Ord, V> BTreeMap<K, V> {
                     Leaf(_) => { break },
                     Internal(edge) => {
                         node_left = edge.descend();
-                        edge_right = unsafe {
-                            edge_right.as_internal_edge().descend().first_edge()
-                        };
+                        // edge_right = unsafe {
+                        //     edge_right.as_internal_edge().descend().first_edge()
+                        // };
                     }
                 }
             }
         }
 
-        self.fix_right_way();
-        right.fix_left_way();
+        // self.fix_right_way();
+        // right.fix_left_way();
 
-        (self, right)
+        // (self, right)
+        (Self::new(), Self::new())
     }
 
+    // removes empty levels on top
     fn fix_top(&mut self) {
-        while self.root.as_ref().len() == 0 {
+        while !self.root.is_leaf() && self.root.as_ref().len() == 0 {
             self.root.pop_level();
         }
     }
@@ -920,18 +923,19 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let mut cur_node = self.root.as_mut();
 
         while let Internal(node) = cur_node.force() {
-            let mut kv = node.last_kv_unchecked();
+            let mut last_kv = node.last_kv_unchecked();
 
-            if kv.can_merge() {
-                cur_node = kv.merge().descend();
+            if last_kv.can_merge() {
+                cur_node = last_kv.merge().descend();
             } else {
-                kv.fix_right();
-                cur_node = kv.right_edge().descend();
+                let right_len = last_kv.reborrow().into_node().len();
+                last_kv.bulk_steal_left(node::MIN_LEN + 1 - right_len);
+                cur_node = last_kv.right_edge().descend();
             }
         }
     }
 
-    // symmetric clone of `fix_right_way`
+    /// Symmetric clone of `fix_right_way`.
     fn fix_left_way(&mut self) {
         // TODO
     }
