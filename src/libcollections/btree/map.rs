@@ -858,6 +858,85 @@ impl<K: Ord, V> BTreeMap<K, V> {
     }
 }
 
+impl<K: Ord, V> BTreeMap<K, V> {
+    /// TODO
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// TODO
+    /// ```
+    #[unstable(feature = "btree_split_off",
+               reason = "recently added as part of collections reform 2",
+               issue = "19986")]
+    pub fn split_off(mut self, key: &K) -> (Self, Self) {
+        if self.is_empty() {
+            return (Self::new(), Self::new())
+        }
+
+        let mut right = Self::new();
+
+        {
+            let mut node_left = self.root.as_mut();
+            let mut edge_right = right.root.as_mut().first_edge();
+
+            loop {
+                let split_edge = match search::search_node(node_left, key) {
+                    Found(handle) => handle.left_edge(),
+                    GoDown(handle) => handle
+                };
+
+                // split_edge.cut_right(&mut edge_right);
+
+                match split_edge.force() {
+                    Leaf(_) => { break },
+                    Internal(edge) => {
+                        node_left = edge.descend();
+                        edge_right = unsafe {
+                            edge_right.as_internal_edge().descend().first_edge()
+                        };
+                    }
+                }
+            }
+        }
+
+        self.fix_right_way();
+        right.fix_left_way();
+
+        (self, right)
+    }
+
+    fn fix_top(&mut self) {
+        while self.root.as_ref().len() == 0 {
+            self.root.pop_level();
+        }
+    }
+
+    fn fix_right_way(&mut self) {
+        self.fix_top();
+
+        let mut cur_node = self.root.as_mut();
+
+        while let Internal(node) = cur_node.force() {
+            let mut kv = node.last_kv_unchecked();
+
+            if kv.can_merge() {
+                cur_node = kv.merge().descend();
+            } else {
+                kv.fix_right();
+                cur_node = kv.right_edge().descend();
+            }
+        }
+    }
+
+    // symmetric clone of `fix_right_way`
+    fn fix_left_way(&mut self) {
+        // TODO
+    }
+}
+
 impl<'a, K: 'a, V: 'a> IntoIterator for &'a BTreeMap<K, V> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;

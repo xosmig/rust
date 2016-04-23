@@ -413,6 +413,19 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         let len = self.len();
         Handle::new_edge(self, len)
     }
+
+    pub fn first_kv_unchecked(self) -> Handle<Self, marker::KV> {
+        let len = self.len();
+        debug_assert!(len > 0);
+        Handle::new_kv(self, 0)
+    }
+
+    pub fn last_kv_unchecked(self) -> Handle<Self, marker::KV> {
+        let len = self.len();
+        debug_assert!(len > 0);
+        Handle::new_kv(self, len - 1)
+    }
+
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
@@ -1394,6 +1407,65 @@ impl<BorrowType, K, V, HandleType>
                 _marker: PhantomData
             })
         }
+    }
+}
+
+impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
+    unsafe fn as_internal_ref(self) -> NodeRef<BorrowType, K, V, marker::Internal> {
+        // necessary for correctness, but in a private module
+        debug_assert!(self.height > 0);
+        NodeRef {
+            height: self.height,
+            node: self.node,
+            root: self.root,
+            _marker: PhantomData
+        }
+    }
+}
+
+impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {
+    pub unsafe fn as_internal_edge(self) 
+            -> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge> {
+        Handle {
+            node: self.node.as_internal_ref(),
+            idx: self.idx,
+            _marker: PhantomData
+        }
+    }
+}
+
+impl<'a, K, V, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::Edge> {
+    // отрезает от ноды все, что правее этого ребра, делает из них новую ноду и кладет в `right`
+    pub fn cut_right(&mut self, node_right: &mut NodeRef<marker::Mut<'a>, K, V, NodeType>) {
+        
+        {
+            
+            /*let cur_edge = unsafe { self.reborrow_mut() };
+            while let Ok(cur_kv) = cur_edge.right_node() {
+
+
+                cur_edge = cur_kv.right_edge();
+            }*/
+            
+        }
+    }
+}
+
+impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
+    // перераспределяет значения, чтобы в правом сыне было хотя бы `B` штук
+    pub fn fix_right(&mut self) {
+        // necessary for correctness, but in a private module
+        debug_assert!(self.reborrow().left_edge().descend().len()
+                    + self.reborrow().right_edge().descend().len()
+                    >= (B - 1) + B);
+
+        // TODO
+    }
+
+    // перераспределяет значения, чтобы в левом сыне было хотя бы `B` штук
+    // symmetric clone of `fix_right`
+    pub fn fix_left(&mut self) {
+        // TODO
     }
 }
 
