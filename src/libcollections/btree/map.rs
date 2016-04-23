@@ -876,38 +876,36 @@ impl<K: Ord, V> BTreeMap<K, V> {
             return (Self::new(), Self::new())
         }
 
-        // let mut right = Self::new();
-        // right_edge
+        let mut right = Self::new();
 
         {
-            let mut node_left = self.root.as_mut();
-            // let mut edge_right = right.root.as_mut();
+            let mut left_node = self.root.as_mut();
+            let mut right_node = right.root.as_mut();
 
             loop {
-                let split_edge = match search::search_node(node_left, key) {
+                let mut split_edge = match search::search_node(left_node, key) {
                     Found(handle) => handle.left_edge(),
                     GoDown(handle) => handle
                 };
 
-                // split_edge.cut_right(&mut edge_right);
+                split_edge.cut_right(&mut right_node);
 
                 match split_edge.force() {
                     Leaf(_) => { break },
                     Internal(edge) => {
-                        node_left = edge.descend();
-                        // edge_right = unsafe {
-                        //     edge_right.as_internal_edge().descend().first_edge()
-                        // };
+                        left_node = edge.descend();
+                        right_node = unsafe {
+                            right_node.as_internal_ref().first_edge().new_node()
+                        };
                     }
                 }
             }
         }
 
-        // self.fix_right_way();
-        // right.fix_left_way();
+        self.fix_right_way();
+        right.fix_left_way();
 
-        // (self, right)
-        (Self::new(), Self::new())
+        (self, right)
     }
 
     // removes empty levels on top

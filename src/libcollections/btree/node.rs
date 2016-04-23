@@ -1004,6 +1004,24 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             InsertResult::Split(left, k, v, right)
         }
     }
+
+    pub fn new_node(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+        let idx = self.idx;
+        let mut parent = self.into_node();
+
+        parent.as_internal_mut().edges[idx] = if parent.height == 1 {
+            BoxedNode::from_leaf(Box::new(unsafe { LeafNode::new() }))
+        } else {
+            BoxedNode::from_internal(Box::new(unsafe { InternalNode::new() }))
+        };
+
+        NodeRef {
+            height: parent.height - 1,
+            node: parent.as_internal().edges[idx].as_ptr(),
+            root: parent.root,
+            _marker: PhantomData
+        }
+    }
 }
 
 impl<BorrowType, K, V>
@@ -1422,7 +1440,7 @@ impl<BorrowType, K, V, HandleType>
 }
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
-    unsafe fn as_internal_ref(self) -> NodeRef<BorrowType, K, V, marker::Internal> {
+    pub unsafe fn as_internal_ref(self) -> NodeRef<BorrowType, K, V, marker::Internal> {
         // necessary for correctness, but in a private module
         debug_assert!(self.height > 0);
         NodeRef {
@@ -1434,7 +1452,7 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
     }
 }
 
-impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {
+/*impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {
     pub unsafe fn as_internal_edge(self) 
             -> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge> {
         Handle {
@@ -1443,12 +1461,13 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
             _marker: PhantomData
         }
     }
-}
+}*/
 
 impl<'a, K, V, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::Edge> {
     // отрезает от ноды все, что правее этого ребра, делает из них новую ноду и кладет в `right`
-    // pub fn cut_right(&mut self, edge_right: &mut Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>) {
-    // }
+    pub fn cut_right(&mut self, right_node: &mut NodeRef<marker::Mut<'a>, K, V, NodeType>) {
+
+    }
 }
 
 pub enum ForceResult<Leaf, Internal> {
