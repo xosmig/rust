@@ -895,7 +895,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                     Internal(edge) => {
                         left_node = edge.descend();
                         right_node = unsafe {
-                            right_node.as_internal_ref().first_edge().new_node()
+                            right_node.as_internal_ref().first_edge().descend()
                         };
                     }
                 }
