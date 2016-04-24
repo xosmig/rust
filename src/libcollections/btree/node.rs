@@ -1008,17 +1008,23 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
     pub fn new_node(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
         let idx = self.idx;
         let mut parent = self.into_node();
+        let height = parent.height - 1;
+        let root = parent.root;
 
-        parent.as_internal_mut().edges[idx] = if parent.height == 1 {
+        let edge = unsafe {
+            parent.as_internal_mut().edges.get_unchecked_mut(idx)
+        };
+
+        *edge = if height == 0 {
             BoxedNode::from_leaf(Box::new(unsafe { LeafNode::new() }))
         } else {
             BoxedNode::from_internal(Box::new(unsafe { InternalNode::new() }))
         };
 
         NodeRef {
-            height: parent.height - 1,
-            node: parent.as_internal().edges[idx].as_ptr(),
-            root: parent.root,
+            height: height,
+            node: (*edge).as_ptr(),
+            root: root,
             _marker: PhantomData
         }
     }
@@ -1452,19 +1458,8 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
     }
 }
 
-/*impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {
-    pub unsafe fn as_internal_edge(self) 
-            -> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge> {
-        Handle {
-            node: self.node.as_internal_ref(),
-            idx: self.idx,
-            _marker: PhantomData
-        }
-    }
-}*/
-
 impl<'a, K, V, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::Edge> {
-    // отрезает от ноды все, что правее этого ребра, делает из них новую ноду и кладет в `right`
+    /// TODO: about
     pub fn cut_right(&mut self, right_node: &mut NodeRef<marker::Mut<'a>, K, V, NodeType>) {
 
     }

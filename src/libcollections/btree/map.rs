@@ -908,7 +908,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         (self, right)
     }
 
-    // removes empty levels on top
+    // Removes empty levels on top.
     fn fix_top(&mut self) {
         while !self.root.is_leaf() && self.root.as_ref().len() == 0 {
             self.root.pop_level();
