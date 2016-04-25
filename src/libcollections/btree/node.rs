@@ -234,10 +234,6 @@ impl<K, V> Root<K, V> {
         ret
     }
 
-    pub fn is_leaf(&self) -> bool {
-        self.height == 0
-    }
-
     /// Removes the root node, using its first child as the new root. This cannot be called when
     /// the tree consists only of a leaf node. As it is intended only to be called when the root
     /// has only one edge, no cleanup is done on any of the other children are elements of the root.
@@ -264,6 +260,10 @@ impl<K, V> Root<K, V> {
                 mem::align_of::<InternalNode<K, V>>()
             );
         }
+    }
+
+    pub unsafe fn set_height(&mut self, height: usize) {
+        self.height = height;
     }
 }
 
@@ -1426,7 +1426,7 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
 impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
     /// TODO: about
     pub fn cut_right(&mut self,
-                     right_node: &mut NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>) {
+            right_node: &mut NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>) -> usize {
         unsafe {
             let left_cnt = self.idx;
 
@@ -1438,6 +1438,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
 
             // necessary for correctness, but in a private module
             debug_assert!(right_len == 0);
+            debug_assert!(self.reborrow().into_node().height == right_node.height);
 
             let right_cnt = left_len - left_cnt;
 
@@ -1474,6 +1475,9 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
 
             self.reborrow_mut().into_node().as_leaf_mut().len = left_cnt as u16;
             right_node.reborrow_mut().as_leaf_mut().len = right_cnt as u16;
+
+            // TODO: return value
+            0
         }
     }
 }

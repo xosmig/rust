@@ -880,6 +880,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
         {
             let mut left_node = self.root.as_mut();
+            unsafe { right.root.set_height(left_node.height()); }
             let mut right_node = right.root.as_mut();
 
             loop {
@@ -888,7 +889,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                     GoDown(handle) => handle
                 };
 
-                split_edge.cut_right(&mut right_node);
+                right.length += split_edge.cut_right(&mut right_node);
 
                 match split_edge.force() {
                     Leaf(_) => { break },
@@ -910,7 +911,13 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
     // Removes empty levels on top.
     fn fix_top(&mut self) {
-        while !self.root.is_leaf() && self.root.as_ref().len() == 0 {
+        loop {
+            {
+                let node = self.root.as_ref();
+                if node.height() == 0 || node.len() > 0 {
+                    break;
+                }
+            }
             self.root.pop_level();
         }
     }
@@ -918,19 +925,23 @@ impl<K: Ord, V> BTreeMap<K, V> {
     fn fix_right_way(&mut self) {
         self.fix_top();
 
-        let mut cur_node = self.root.as_mut();
+        {
+            let mut cur_node = self.root.as_mut();
 
-        while let Internal(node) = cur_node.force() {
-            let mut last_kv = node.last_kv_unchecked();
+            while let Internal(node) = cur_node.force() {
+                let mut last_kv = node.last_kv_unchecked();
 
-            if last_kv.can_merge() {
-                cur_node = last_kv.merge().descend();
-            } else {
-                let right_len = last_kv.reborrow().into_node().len();
-                last_kv.bulk_steal_left(node::MIN_LEN + 1 - right_len);
-                cur_node = last_kv.right_edge().descend();
+                if last_kv.can_merge() {
+                    cur_node = last_kv.merge().descend();
+                } else {
+                    let right_len = last_kv.reborrow().right_edge().descend().len();
+                    last_kv.bulk_steal_left(node::MIN_LEN + 1 - right_len);
+                    cur_node = last_kv.right_edge().descend();
+                }
             }
         }
+
+        self.fix_top();
     }
 
     /// Symmetric clone of `fix_right_way`.
