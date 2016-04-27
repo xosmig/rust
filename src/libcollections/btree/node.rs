@@ -1426,7 +1426,7 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
 impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
     /// TODO: about
     pub fn cut_right(&mut self,
-            right_node: &mut NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>) -> usize {
+            right_node: &mut NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>) {
         unsafe {
             let left_cnt = self.idx;
 
@@ -1475,9 +1475,6 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
 
             self.reborrow_mut().into_node().as_leaf_mut().len = left_cnt as u16;
             right_node.reborrow_mut().as_leaf_mut().len = right_cnt as u16;
-
-            // TODO: return value
-            0
         }
     }
 }

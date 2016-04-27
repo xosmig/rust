@@ -856,9 +856,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
             cur_node = last_edge.descend();
         }
     }
-}
 
-impl<K: Ord, V> BTreeMap<K, V> {
     /// TODO
     ///
     /// # Examples
@@ -871,9 +869,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[unstable(feature = "btree_split_off",
                reason = "recently added as part of collections reform 2",
                issue = "19986")]
-    pub fn split_off(mut self, key: &K) -> (Self, Self) {
+    pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self where K: Borrow<Q> {
         if self.is_empty() {
-            return (Self::new(), Self::new())
+            return Self::new();
         }
 
         let mut right = Self::new();
@@ -889,7 +887,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                     GoDown(handle) => handle
                 };
 
-                right.length += split_edge.cut_right(&mut right_node);
+                split_edge.cut_right(&mut right_node);
 
                 match split_edge.force() {
                     Leaf(_) => { break },
@@ -906,7 +904,10 @@ impl<K: Ord, V> BTreeMap<K, V> {
         self.fix_right_way();
         right.fix_left_way();
 
-        (self, right)
+        // Calculate sizes with O(smallest.size) by parallel counting.
+        // TODO
+
+        right
     }
 
     // Removes empty levels on top.
