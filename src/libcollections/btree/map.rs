@@ -874,6 +874,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
             return Self::new();
         }
 
+        let total_num = self.len();
+
         let mut right = Self::new();
 
         {
@@ -883,10 +885,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
             loop {
                 let mut split_edge = match search::search_node(left_node, key) {
+                    // key is going to the right tree
                     Found(handle) => handle.left_edge(),
                     GoDown(handle) => handle
                 };
 
+                // Also creates a new empty node for the first edge of the `right_node`
                 split_edge.cut_right(&mut right_node);
 
                 match split_edge.force() {
@@ -904,13 +908,40 @@ impl<K: Ord, V> BTreeMap<K, V> {
         self.fix_right_way();
         right.fix_left_way();
 
-        // Calculate sizes with O(smallest.size) by parallel counting.
-        // TODO
+        if self.root.as_ref().height() < right.root.as_ref().height() {
+            self.recalc_length();
+            right.length = total_num - self.len();
+        } else {
+            right.recalc_length();
+            self.length = total_num - right.len();
+        }
 
         right
     }
 
-    // Removes empty levels on top.
+    /// Calculates the number of elements if it was incorrect.
+    fn recalc_length(&mut self) {
+        fn dfs<K, V>(node: NodeRef<marker::Immut, K, V, marker::LeafOrInternal>) -> usize {
+            let mut res = node.len();
+            match node.force() {
+                Internal(node) => {
+                    let mut edge = node.first_edge();
+                    loop {
+                        res += dfs(edge.reborrow().descend());
+                        match edge.right_kv() {
+                            Ok(kv) => { edge = kv.right_edge(); },
+                            Err(_) => { break; }
+                        }
+                    }
+                },
+                Leaf(_) => {}
+            }
+            res
+        }
+        self.length = dfs(self.root.as_ref());
+    }
+
+    /// Removes empty levels on the top.
     fn fix_top(&mut self) {
         loop {
             {
@@ -930,7 +961,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
             let mut cur_node = self.root.as_mut();
 
             while let Internal(node) = cur_node.force() {
-                let mut last_kv = node.last_kv_unchecked();
+                let mut last_kv = node.last_kv();
 
                 if last_kv.can_merge() {
                     cur_node = last_kv.merge().descend();
@@ -945,9 +976,27 @@ impl<K: Ord, V> BTreeMap<K, V> {
         self.fix_top();
     }
 
-    /// Symmetric clone of `fix_right_way`.
+    /// The symmetric clone of `fix_right_way`.
     fn fix_left_way(&mut self) {
-        // TODO
+        self.fix_top();
+
+        {
+            let mut cur_node = self.root.as_mut();
+
+            while let Internal(node) = cur_node.force() {
+                let mut first_kv = node.first_kv();
+
+                if first_kv.can_merge() {
+                    cur_node = first_kv.merge().descend();
+                } else {
+                    let left_len = first_kv.reborrow().left_edge().descend().len();
+                    first_kv.bulk_steal_right(node::MIN_LEN + 1 - left_len);
+                    cur_node = first_kv.left_edge().descend();
+                }
+            }
+        }
+
+        self.fix_top();
     }
 }
 

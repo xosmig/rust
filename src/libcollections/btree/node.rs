@@ -419,13 +419,13 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         Handle::new_edge(self, len)
     }
 
-/*    pub fn first_kv_unchecked(self) -> Handle<Self, marker::KV> {
+    pub fn first_kv(self) -> Handle<Self, marker::KV> {
         let len = self.len();
         debug_assert!(len > 0);
         Handle::new_kv(self, 0)
-    }*/
+    }
 
-    pub fn last_kv_unchecked(self) -> Handle<Self, marker::KV> {
+    pub fn last_kv(self) -> Handle<Self, marker::KV> {
         let len = self.len();
         debug_assert!(len > 0);
         Handle::new_kv(self, len - 1)
@@ -1383,6 +1383,11 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 }
             }
         }
+    }
+
+    /// The symmetric clone of `bulk_steal_left`.
+    pub fn bulk_steal_right(&mut self, n: usize) {
+        // TODO
     }
 }
 
