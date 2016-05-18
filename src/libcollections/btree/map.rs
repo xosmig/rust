@@ -894,7 +894,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 split_edge.cut_right(&mut right_node);
 
                 match split_edge.force() {
-                    Leaf(_) => { break },
+                    Leaf(_) => { break; },
                     Internal(edge) => {
                         left_node = edge.descend();
                         right_node = unsafe {
@@ -923,19 +923,18 @@ impl<K: Ord, V> BTreeMap<K, V> {
     fn recalc_length(&mut self) {
         fn dfs<K, V>(node: NodeRef<marker::Immut, K, V, marker::LeafOrInternal>) -> usize {
             let mut res = node.len();
-            match node.force() {
-                Internal(node) => {
-                    let mut edge = node.first_edge();
-                    loop {
-                        res += dfs(edge.reborrow().descend());
-                        match edge.right_kv() {
-                            Ok(kv) => { edge = kv.right_edge(); },
-                            Err(_) => { break; }
-                        }
+
+            if let Internal(node) = node.force() {
+                let mut edge = node.first_edge();
+                loop {
+                    res += dfs(edge.reborrow().descend());
+                    match edge.right_kv() {
+                        Ok(kv) => { edge = kv.right_edge(); },
+                        Err(_) => { break; }
                     }
-                },
-                Leaf(_) => {}
+                }
             }
+
             res
         }
         self.length = dfs(self.root.as_ref());
