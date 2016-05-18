@@ -1531,19 +1531,15 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
             let (right_len, right_k, right_v, right_e) = right_node.reborrow_mut()
                 .into_pointers_mut();
 
-            // necessary for correctness, but in a private module
             debug_assert!(right_len == 0);
             debug_assert!(self.reborrow().into_node().height == right_node.height);
 
             let right_cnt = left_len - left_cnt;
 
-            ptr::copy_nonoverlapping(left_k.offset(left_cnt as isize),
-                                     right_k,
-                                     right_cnt);
+            copy_kv(left_k, left_v, left_cnt, right_k, right_v, 0, right_cnt);
 
-            ptr::copy_nonoverlapping(left_v.offset(left_cnt as isize),
-                                     right_v,
-                                     right_cnt);
+            self.reborrow_mut().into_node().as_leaf_mut().len = left_cnt as u16;
+            right_node.reborrow_mut().as_leaf_mut().len = right_cnt as u16;
 
             match (left_e, right_e) {
                 (Some(left), Some(right)) => {
@@ -1558,18 +1554,11 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
                         BoxedNode::from_internal(Box::new(InternalNode::new()))
                     };
 
-                    for i in 0..(right_cnt + 1) {
-                        Handle::new_edge(right_node.reborrow_mut().as_internal_ref(), i as usize)
-                            .correct_parent_link();
-                    }
+                    right_node.reborrow_mut().as_internal_ref().correct_childs_parent_links();
                 },
-                (Some(_), None) => unreachable!(),
-                (None, Some(_)) => unreachable!(),
-                (None, None) => {}
+                (None, None) => {},
+                _ => unreachable!()
             }
-
-            self.reborrow_mut().into_node().as_leaf_mut().len = left_cnt as u16;
-            right_node.reborrow_mut().as_leaf_mut().len = right_cnt as u16;
         }
     }
 }
