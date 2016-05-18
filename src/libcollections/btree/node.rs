@@ -1342,37 +1342,15 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             }
 
             // Move elements from the left child to the right one.
-            let left_ind = (left_len - n) as isize;
-            ptr::copy_nonoverlapping(left_k.offset(left_ind + 1),
-                                     right_k,
-                                     n - 1);
-            ptr::copy_nonoverlapping(left_v.offset(left_ind + 1),
-                                     right_v,
-                                     n - 1);
-            match (left_e, right_e) {
-                (Some(left), Some(right)) => {
-                    ptr::copy_nonoverlapping(left.offset(left_ind + 1),
-                                             right,
-                                             n);
-                },
-                (None, None) => {},
-                _ => unreachable!()
-            }
+            let left_ind = left_len - n;
+            copy_kv(left_k, left_v, left_ind + 1, right_k, right_v, 0, n - 1);
+            copy_edges(left_e, left_ind + 1, right_e, 0, n);
 
             // Copy parent key/value pair to right child.
-            ptr::copy_nonoverlapping(parent_k,
-                                     right_k.offset(n as isize - 1),
-                                     1);
-            ptr::copy_nonoverlapping(parent_v,
-                                     right_v.offset(n as isize - 1),
-                                     1);
+            copy_kv(parent_k, parent_v, 0, right_k, right_v, n - 1, 1);
+
             // Copy left-most stolen pair to parent.
-            ptr::copy_nonoverlapping(left_k.offset(left_ind),
-                                     parent_k,
-                                     1);
-            ptr::copy_nonoverlapping(left_v.offset(left_ind),
-                                     parent_v,
-                                     1);
+            copy_kv(left_k, left_v, left_ind, parent_k, parent_v, 0, 1);
 
             // Fix lengths of left and right child and parent pointers in children of the right
             // child.
@@ -1380,9 +1358,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             let mut right = self.reborrow_mut().right_edge().descend();
             right.as_leaf_mut().len += n as u16;
             if let ForceResult::Internal(mut node) = right.force() {
-                for i in 0..(right_len + n + 1) {
-                    Handle::new_edge(node.reborrow_mut(), i as usize).correct_parent_link();
-                }
+                node.correct_childs_parent_links();
             }
         }
     }
