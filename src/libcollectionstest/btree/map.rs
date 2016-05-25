@@ -13,6 +13,9 @@ use std::collections::Bound::{Excluded, Included, Unbounded, self};
 use std::collections::btree_map::Entry::{Occupied, Vacant};
 use std::rc::Rc;
 
+use std::iter::FromIterator;
+use super::DeterministicRng;
+
 #[test]
 fn test_basic_large() {
     let mut map = BTreeMap::new();
@@ -497,6 +500,52 @@ create_append_test!(test_append_170, 170);
 create_append_test!(test_append_181, 181);
 create_append_test!(test_append_239, 239);
 create_append_test!(test_append_1700, 1700);
+
+fn rand_vec(len: usize) -> Vec<(u32, u32)> {
+    let mut rng = DeterministicRng::new();
+    Vec::from_iter(
+        (0..len).map(|_| (rng.next(), rng.next()))
+    )
+}
+
+/*#[test]
+fn test_split_off_empty_right() {
+    let mut data = rand_vec(173);
+    data.sort();
+
+    let mut map = BTreeMap::from_iter(data.clone());
+    let right = map.split_off(&(data.last().unwrap().0 + 1));
+
+    assert!(map.into_iter().eq(data));
+    assert!(right.into_iter().eq(None));
+}*/
+
+/*#[test]
+fn test_split_off_empty_left() {
+
+}
+*/
+
+#[test]
+fn test_split_off_large_random() {
+    let mut data = rand_vec(12);
+    data.sort();
+
+    let mut map = BTreeMap::from_iter(data.clone());
+    // assert!(map.clone().into_iter().eq(data.clone().into_iter())); // TODO: remove
+
+    let key = data[0].0;
+    // let right =
+    map.split_off(&key);
+
+    // assert!(map.into_iter().eq(data.clone().filter(|x| x.0 < key)));
+    // assert!(right.into_iter().eq(data.filter(|x| x.0 >= key)));
+}
+
+/*#[test]
+fn test_split_off_small_random() {
+
+}*/
 
 mod bench {
     use std::collections::BTreeMap;

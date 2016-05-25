@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(warnings)]
+// #![deny(warnings)] // TO_DO: return it
 
 #![feature(binary_heap_extras)]
 #![feature(binary_heap_append)]
 #![feature(box_syntax)]
 // #![feature(btree_split_off)]
 #![feature(btree_append)]
+#![feature(btree_split_off)]
 #![feature(btree_range)]
 #![feature(collections)]
 #![feature(collections_bound)]

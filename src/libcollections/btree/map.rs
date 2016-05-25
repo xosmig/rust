@@ -857,14 +857,14 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
-    /// TODO
+    /// TO_DO
     ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// TODO
+    /// // TO_DO
     /// ```
     #[unstable(feature = "btree_split_off",
                reason = "recently added as part of collections reform 2",
@@ -966,7 +966,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
                     cur_node = last_kv.merge().descend();
                 } else {
                     let right_len = last_kv.reborrow().right_edge().descend().len();
-                    last_kv.bulk_steal_left(node::MIN_LEN + 1 - right_len);
+                    if right_len < node::MIN_LEN + 1 {
+                        last_kv.bulk_steal_left(node::MIN_LEN + 1 - right_len);
+                    }
                     cur_node = last_kv.right_edge().descend();
                 }
             }
@@ -989,7 +991,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
                     cur_node = first_kv.merge().descend();
                 } else {
                     let left_len = first_kv.reborrow().left_edge().descend().len();
-                    first_kv.bulk_steal_right(node::MIN_LEN + 1 - left_len);
+                    if left_len < node::MIN_LEN + 1 {
+                        first_kv.bulk_steal_right(node::MIN_LEN + 1 - left_len);
+                    }
                     cur_node = first_kv.left_edge().descend();
                 }
             }
