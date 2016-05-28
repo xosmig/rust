@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use boxed::Box; // TO_DO: remove
+
 use core::cmp::Ordering;
 use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
@@ -877,11 +879,18 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let total_num = self.len();
 
         let mut right = Self::new();
+        {
+            let __test_1 = Box::new(5 as usize);
+        }
 
         {
             let mut left_node = self.root.as_mut();
             unsafe { right.root.set_height(left_node.height()); }
             let mut right_node = right.root.as_mut();
+
+            {
+               let __test_2 = Box::new(5 as usize);
+            }
 
             loop {
                 let mut split_edge = match search::search_node(left_node, key) {

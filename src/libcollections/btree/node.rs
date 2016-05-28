@@ -1498,69 +1498,35 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
     pub fn cut_right(&mut self,
             right_node: &mut NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>) {
         unsafe {
-            let left_cnt = self.idx;
+            let (new_left_len, new_right_len) = {
+                let (left_len, left_k, left_v, left_e) = self.reborrow_mut().into_node()
+                    .into_pointers_mut();
 
-            let (left_len, left_k, left_v, left_e) = self.reborrow_mut().into_node()
-                .into_pointers_mut();
+                let (right_len, right_k, right_v, right_e) = right_node.reborrow_mut()
+                    .into_pointers_mut();
 
-            let (right_len, right_k, right_v, right_e) = right_node.reborrow_mut()
-                .into_pointers_mut();
+                debug_assert!(right_len == 0);
+                debug_assert!(self.reborrow().into_node().height == right_node.height);
 
-            debug_assert!(right_len == 0);
-            debug_assert!(self.reborrow().into_node().height == right_node.height);
+                let left_cnt = self.idx;
+                let right_cnt = left_len - left_cnt;
 
-            let right_cnt = left_len - left_cnt;
-
-            copy_kv(left_k, left_v, left_cnt, right_k, right_v, 0, right_cnt);
-
-            self.reborrow_mut().into_node().as_leaf_mut().len = left_cnt as u16;
-            right_node.reborrow_mut().as_leaf_mut().len = right_cnt as u16;
-
-            if let ForceResult::Internal(mut node) = right_node.reborrow_mut().force() {
-                let __test_second_edge_left_1 =
-                    (*(left_e.unwrap().offset(left_cnt as isize + 1))).as_ptr(); // TO_DO: remove
-                let __test_second_edge_left_2 =
-                    self.reborrow_mut().into_node().as_internal_ref().as_internal_mut()
-                        .edges.get_unchecked_mut(left_cnt + 1).as_ptr(); // TO_DO: remove
-
+                copy_kv(left_k, left_v, left_cnt, right_k, right_v, 0, right_cnt);
                 copy_edges(left_e, left_cnt + 1, right_e, 1, right_cnt);
 
-                let __test_second_edge_right_1 =
-                    (*(right_e.unwrap().offset(1))).as_ptr(); // TO_DO: remove
-                // TO_DO: remove
-                let __test_second_edge_right_2 =
-                    node.reborrow_mut().as_internal_mut()
-                        .edges.get_unchecked_mut(1).as_ptr();
+                (left_cnt, right_cnt)
+            };
 
-                if true { /*do_nothing*/} // TO_DO: remove
+            self.reborrow_mut().into_node().as_leaf_mut().len = new_left_len as u16;
+            right_node.reborrow_mut().as_leaf_mut().len = new_right_len as u16;
 
-                assert!(__test_second_edge_left_1 == __test_second_edge_left_2); // TO_DO: remove
-                assert!(__test_second_edge_right_1 == __test_second_edge_right_2); // TO_DO: remove
-
-                assert!(__test_second_edge_left_1 == __test_second_edge_right_1); // TO_DO: remove
-
-                let new_node = if node.height == 1 {
+            if let ForceResult::Internal(mut node) = right_node.reborrow_mut().force() {
+                /*let new_node = if node.height == 1 {
                     BoxedNode::from_leaf(Box::new(LeafNode::new()))
                 } else {
                     BoxedNode::from_internal(Box::new(InternalNode::new()))
-                };
-
-                let __test_second_edge_right_after_1 =
-                    (*(right_e.unwrap().offset(1))).as_ptr(); // TO_DO: remove
-                // TO_DO: remove
-                let __test_second_edge_right_after_2 =
-                    node.reborrow_mut().as_internal_mut()
-                        .edges.get_unchecked_mut(1).as_ptr();
-
-                if true { /*do_nothing*/} // TO_DO: remove
-
-                assert!(__test_second_edge_right_after_1 == __test_second_edge_right_after_2); // TO_DO: remove
-                assert!(__test_second_edge_right_after_1 == __test_second_edge_right_1); // TO_DO: remove
-
-                ptr::write(
-                    node.reborrow_mut().as_internal_mut().edges.get_unchecked_mut(0),
-                    new_node
-                );
+                };*/
+                Box::new(LeafNode::<K, V>::new());
 
                 node.correct_childs_parent_links();
             }
