@@ -1521,12 +1521,16 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
             right_node.reborrow_mut().as_leaf_mut().len = new_right_len as u16;
 
             if let ForceResult::Internal(mut node) = right_node.reborrow_mut().force() {
-                /*let new_node = if node.height == 1 {
+                let first_edge = if node.height == 1 {
                     BoxedNode::from_leaf(Box::new(LeafNode::new()))
                 } else {
                     BoxedNode::from_internal(Box::new(InternalNode::new()))
-                };*/
-                Box::new(LeafNode::<K, V>::new());
+                };
+
+                ptr::write(
+                    node.reborrow_mut().as_internal_mut().edges.get_unchecked_mut(0),
+                    first_edge
+                );
 
                 node.correct_childs_parent_links();
             }
