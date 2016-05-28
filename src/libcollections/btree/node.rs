@@ -1497,19 +1497,24 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
     /// TO_DO: about
     pub fn cut_right(&mut self,
             right_node: &mut NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>) {
-        unsafe {
-            // TO_DO: remove: begin
+        // TO_DO: remove: begin
 
-            let magick_1 = right_node.reborrow().as_internal_ref().as_internal().edges[1].as_ptr();
-            Box::new(LeafNode::<K, V>::new());
-            let magick_2 = right_node.reborrow().as_internal_ref().as_internal().edges[1].as_ptr();
+        if let ForceResult::Internal(node) = right_node.reborrow().force() {
+            let magick_1 = node.reborrow().as_internal().edges[1].as_ptr();
+            Box::new([123456789 as usize; 2 * CAPACITY + 2]);
+            let magick_2 = node.as_internal().edges[1].as_ptr();
 
-            if true { /*check it now: is magick_1 equal to magick_2?*/}
+            if true { /*check it now in gdb: `magick_1` must be equal to `magick_2`?*/}
             assert!(magick_1 == magick_2);
+            // assertion failed, segmentation fault in `drop` method.
+        }
 
-            // TO_DO: remove: end
+        // TO_DO: remove: end
 
-            /*let (new_left_len, new_right_len) = {
+        // unsafe {
+            /*
+            let (left_cnt, right_cnt)
+            {
                 let (left_len, left_k, left_v, left_e) = self.reborrow_mut().into_node()
                     .into_pointers_mut();
 
@@ -1519,17 +1524,15 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
                 debug_assert!(right_len == 0);
                 debug_assert!(self.reborrow().into_node().height == right_node.height);
 
-                let left_cnt = self.idx;
-                let right_cnt = left_len - left_cnt;
+                left_cnt = self.idx;
+                right_cnt = left_len - left_cnt;
 
                 copy_kv(left_k, left_v, left_cnt, right_k, right_v, 0, right_cnt);
                 copy_edges(left_e, left_cnt + 1, right_e, 1, right_cnt);
-
-                (left_cnt, right_cnt)
             };
 
-            self.reborrow_mut().into_node().as_leaf_mut().len = new_left_len as u16;
-            right_node.reborrow_mut().as_leaf_mut().len = new_right_len as u16;
+            self.reborrow_mut().into_node().as_leaf_mut().len = left_cnt as u16;
+            right_node.reborrow_mut().as_leaf_mut().len = right_cnt as u16;
 
             if let ForceResult::Internal(mut node) = right_node.reborrow_mut().force() {
                 let first_edge = if node.height == 1 {
@@ -1545,7 +1548,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
 
                 node.correct_childs_parent_links();
             }*/
-        }
+        // }
     }
 }
 

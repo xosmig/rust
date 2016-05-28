@@ -880,7 +880,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
         {
             let mut left_node = self.root.as_mut();
-            unsafe { right.root.set_height(left_node.height()); }
+            // unsafe { right.root.set_height(left_node.height()); } // TO_DO: uncomment
             let mut right_node = right.root.as_mut();
 
             loop {
