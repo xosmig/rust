@@ -1498,7 +1498,18 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
     pub fn cut_right(&mut self,
             right_node: &mut NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>) {
         unsafe {
-            let (new_left_len, new_right_len) = {
+            // TO_DO: remove: begin
+
+            let magick_1 = right_node.reborrow().as_internal_ref().as_internal().edges[1].as_ptr();
+            Box::new(LeafNode::<K, V>::new());
+            let magick_2 = right_node.reborrow().as_internal_ref().as_internal().edges[1].as_ptr();
+
+            if true { /*check it now: is magick_1 equal to magick_2?*/}
+            assert!(magick_1 == magick_2);
+
+            // TO_DO: remove: end
+
+            /*let (new_left_len, new_right_len) = {
                 let (left_len, left_k, left_v, left_e) = self.reborrow_mut().into_node()
                     .into_pointers_mut();
 
@@ -1533,7 +1544,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
                 );
 
                 node.correct_childs_parent_links();
-            }
+            }*/
         }
     }
 }
