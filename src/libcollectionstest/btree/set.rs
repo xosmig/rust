@@ -10,6 +10,9 @@
 
 use std::collections::BTreeSet;
 
+use std::iter::FromIterator;
+use super::DeterministicRng;
+
 #[test]
 fn test_clone_eq() {
   let mut m = BTreeSet::new();
@@ -301,7 +304,7 @@ fn rand_data(len: usize) -> Vec<u32> {
 fn test_split_off_empty_right() {
     let mut data = rand_data(173);
 
-    let mut map = BTreeMap::from_iter(data.clone());
+    let mut map = BTreeSet::from_iter(data.clone());
     let right = map.split_off(data.iter().max().unwrap() + 1);
 
     data.sort();
@@ -313,7 +316,7 @@ fn test_split_off_empty_right() {
 fn test_split_off_empty_left() {
     let mut data = rand_data(314);
 
-    let mut map = BTreeMap::from_iter(data.clone());
+    let mut map = BTreeSet::from_iter(data.clone());
     let right = map.split_off(data.iter().min().unwrap());
 
     data.sort();
@@ -327,7 +330,7 @@ fn test_split_off_large_random_sorted() {
     // special case with maximum height.
     data.sort();
 
-    let mut map = BTreeMap::from_iter(data.clone());
+    let mut map = BTreeSet::from_iter(data.clone());
     let key = data[data.len() / 2];
     let right = map.split_off(&key);
 
