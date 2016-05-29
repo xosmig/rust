@@ -857,14 +857,35 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
-    /// TO_DO
+    /// Splits the collection into two at the given key. Returns everything after the given key,
+    /// including the key.
     ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// // TO_DO
+    /// #![feature(btree_split_off)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    /// a.insert(17, "d");
+    /// a.insert(41, "e");
+    ///
+    /// let b = a.split_off(&3);
+    ///
+    /// assert_eq!(a.len(), 2);
+    /// assert_eq!(b.len(), 3);
+    ///
+    /// assert_eq!(a[&1], "a");
+    /// assert_eq!(a[&2], "b");
+    ///
+    /// assert_eq!(b[&3], "c");
+    /// assert_eq!(b[&17], "d");
+    /// assert_eq!(b[&41], "e");
     /// ```
     #[unstable(feature = "btree_split_off",
                reason = "recently added as part of collections reform 2",
@@ -877,10 +898,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let total_num = self.len();
 
         let mut right = Self::new();
+        for _ in 0..(self.root.as_ref().height()) {
+            right.root.push_level();
+        }
 
         {
             let mut left_node = self.root.as_mut();
-            // unsafe { right.root.set_height(left_node.height()); } // TO_DO: uncomment
             let mut right_node = right.root.as_mut();
 
             loop {
@@ -890,15 +913,15 @@ impl<K: Ord, V> BTreeMap<K, V> {
                     GoDown(handle) => handle
                 };
 
-                // Also creates a new empty node for the first edge of the `right_node`
-                split_edge.cut_right(&mut right_node);
+                split_edge.cut_to_right(&mut right_node);
 
                 match split_edge.force() {
                     Leaf(_) => { break; },
                     Internal(edge) => {
                         left_node = edge.descend();
-                        right_node = unsafe {
-                            right_node.as_internal_ref().first_edge().descend()
+                        right_node = match right_node.force() {
+                            Internal(node) => { node.first_edge().descend() },
+                            _ => { unreachable!() }
                         };
                     }
                 }
@@ -919,7 +942,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         right
     }
 
-    /// Calculates the number of elements if it was incorrect.
+    /// Calculates the number of elements if it is incorrect.
     fn recalc_length(&mut self) {
         fn dfs<K, V>(node: NodeRef<marker::Immut, K, V, marker::LeafOrInternal>) -> usize {
             let mut res = node.len();
@@ -929,7 +952,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 loop {
                     res += dfs(edge.reborrow().descend());
                     match edge.right_kv() {
-                        Ok(kv) => { edge = kv.right_edge(); },
+                        Ok(right_kv) => { edge = right_kv.right_edge(); },
                         Err(_) => { break; }
                     }
                 }
@@ -937,6 +960,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
             res
         }
+
         self.length = dfs(self.root.as_ref());
     }
 

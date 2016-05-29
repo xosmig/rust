@@ -261,10 +261,6 @@ impl<K, V> Root<K, V> {
             );
         }
     }
-
-    pub unsafe fn set_height(&mut self, height: usize) {
-        self.height = height;
-    }
 }
 
 // N.B. `NodeRef` is always covariant in `K` and `V`, even when the `BorrowType`
@@ -1342,14 +1338,14 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
             // Move elements from the left child to the right one.
             let left_ind = left_len - n;
-            copy_kv(left_k, left_v, left_ind + 1, right_k, right_v, 0, n - 1);
-            copy_edges(left_e, left_ind + 1, right_e, 0, n);
+            move_kv(left_k, left_v, left_ind + 1, right_k, right_v, 0, n - 1);
+            move_edges(left_e, left_ind + 1, right_e, 0, n);
 
             // Copy parent key/value pair to right child.
-            copy_kv(parent_k, parent_v, 0, right_k, right_v, n - 1, 1);
+            move_kv(parent_k, parent_v, 0, right_k, right_v, n - 1, 1);
 
             // Copy left-most stolen pair to parent.
-            copy_kv(left_k, left_v, left_ind, parent_k, parent_v, 0, 1);
+            move_kv(left_k, left_v, left_ind, parent_k, parent_v, 0, 1);
 
             // Fix lengths of left and right child and parent pointers in children of the right
             // child.
@@ -1383,15 +1379,15 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             debug_assert!(left_len + n <= CAPACITY);
             debug_assert!(right_len >= n);
 
+            // Move parent key/value pair to the left child.
+            move_kv(parent_k, parent_v, 0, left_k, left_v, left_len, 1);
+
             // Move elements from the right child to the left one.
-            copy_kv(right_k, right_v, 0, left_k, left_v, left_len, n - 1);
-            copy_edges(right_e, 0, left_e, left_len + 1, n);
+            move_kv(right_k, right_v, 0, left_k, left_v, left_len + 1, n - 1);
+            move_edges(right_e, 0, left_e, left_len + 1, n);
 
-            // Copy parent key/value pair to the left child.
-            copy_kv(parent_k, parent_v, 0, left_k, left_v, left_len + n - 1, 1);
-
-            // Copy right-least stolen pair to the parent.
-            copy_kv(right_k, right_v, n - 1, parent_k, parent_v, 0, 1);
+            // Move right-most stolen pair to parent.
+            move_kv(right_k, right_v, n - 1, parent_k, parent_v, 0, 1);
 
             // Fix right indexing
             let new_right_len = right_len - n;
@@ -1407,7 +1403,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                           new_right_len + 1);
             }
 
-            // Fix lengths and childs' parent information.
+            // Fix left length and childs' parent information.
             {
                 let mut left = self.reborrow_mut().left_edge().descend();
                 left.as_leaf_mut().len += n as u16;
@@ -1416,6 +1412,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 }
             }
 
+            // Fix right length and childs' parent information.
             {
                 let mut right = self.reborrow_mut().right_edge().descend();
                 right.as_leaf_mut().len -= n as u16;
@@ -1427,7 +1424,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
     }
 }
 
-unsafe fn copy_kv<K, V>(
+unsafe fn move_kv<K, V>(
     source_k: *mut K, source_v: *mut V, source_offset: usize,
     dest_k: *mut K, dest_v: *mut V, dest_offset: usize,
     count: usize)
@@ -1441,7 +1438,7 @@ unsafe fn copy_kv<K, V>(
 }
 
 // Source and destination must have the same height.
-unsafe fn copy_edges<K, V>(
+unsafe fn move_edges<K, V>(
     source: Option<*mut BoxedNode<K, V>>, source_offset: usize,
     dest: Option<*mut BoxedNode<K, V>>, dest_offset: usize,
     count: usize)
@@ -1480,75 +1477,34 @@ impl<BorrowType, K, V, HandleType>
     }
 }
 
-impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
-    /// TO_DO: remove. Use `cast_unchecked` instead
-    pub unsafe fn as_internal_ref(self) -> NodeRef<BorrowType, K, V, marker::Internal> {
-        debug_assert!(self.height > 0);
-        NodeRef {
-            height: self.height,
-            node: self.node,
-            root: self.root,
-            _marker: PhantomData
-        }
-    }
-}
-
 impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
-    /// TO_DO: about
-    pub fn cut_right(&mut self,
+    /// splits the node by the given edge (`self`) and puts the right part to `right_node`.
+    /// the first edge of `right_node` remains unchanged.
+    pub fn cut_to_right(&mut self,
             right_node: &mut NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>) {
-        // TO_DO: remove: begin
+        unsafe {
+            let (left_len, left_k, left_v, left_e) = self.reborrow_mut().into_node()
+                .into_pointers_mut();
 
-        if let ForceResult::Internal(node) = right_node.reborrow().force() {
-            let magick_1 = node.reborrow().as_internal().edges[1].as_ptr();
-            Box::new([123456789 as usize; 2 * CAPACITY + 2]);
-            let magick_2 = node.as_internal().edges[1].as_ptr();
+            let (right_len, right_k, right_v, right_e) = right_node.reborrow_mut()
+                .into_pointers_mut();
 
-            if true { /*check it now in gdb: `magick_1` must be equal to `magick_2`?*/}
-            assert!(magick_1 == magick_2);
-            // assertion failed, segmentation fault in `drop` method.
-        }
+            debug_assert!(right_len == 0);
+            debug_assert!(self.reborrow().into_node().height == right_node.height);
 
-        // TO_DO: remove: end
+            let left_cnt = self.idx;
+            let right_cnt = left_len - left_cnt;
 
-        // unsafe {
-            /*
-            let (left_cnt, right_cnt)
-            {
-                let (left_len, left_k, left_v, left_e) = self.reborrow_mut().into_node()
-                    .into_pointers_mut();
-
-                let (right_len, right_k, right_v, right_e) = right_node.reborrow_mut()
-                    .into_pointers_mut();
-
-                debug_assert!(right_len == 0);
-                debug_assert!(self.reborrow().into_node().height == right_node.height);
-
-                left_cnt = self.idx;
-                right_cnt = left_len - left_cnt;
-
-                copy_kv(left_k, left_v, left_cnt, right_k, right_v, 0, right_cnt);
-                copy_edges(left_e, left_cnt + 1, right_e, 1, right_cnt);
-            };
+            move_kv(left_k, left_v, left_cnt, right_k, right_v, 0, right_cnt);
+            move_edges(left_e, left_cnt + 1, right_e, 1, right_cnt);
 
             self.reborrow_mut().into_node().as_leaf_mut().len = left_cnt as u16;
             right_node.reborrow_mut().as_leaf_mut().len = right_cnt as u16;
 
             if let ForceResult::Internal(mut node) = right_node.reborrow_mut().force() {
-                let first_edge = if node.height == 1 {
-                    BoxedNode::from_leaf(Box::new(LeafNode::new()))
-                } else {
-                    BoxedNode::from_internal(Box::new(InternalNode::new()))
-                };
-
-                ptr::write(
-                    node.reborrow_mut().as_internal_mut().edges.get_unchecked_mut(0),
-                    first_edge
-                );
-
                 node.correct_childs_parent_links();
-            }*/
-        // }
+            }
+        }
     }
 }
 

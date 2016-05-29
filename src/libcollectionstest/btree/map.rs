@@ -508,44 +508,44 @@ fn rand_vec(len: usize) -> Vec<(u32, u32)> {
     )
 }
 
-/*#[test]
+#[test]
 fn test_split_off_empty_right() {
     let mut data = rand_vec(173);
-    data.sort();
 
     let mut map = BTreeMap::from_iter(data.clone());
-    let right = map.split_off(&(data.last().unwrap().0 + 1));
+    let right = map.split_off(&(data.iter().max().unwrap().0 + 1));
 
+    data.sort();
     assert!(map.into_iter().eq(data));
     assert!(right.into_iter().eq(None));
-}*/
-
-/*#[test]
-fn test_split_off_empty_left() {
-
 }
-*/
 
 #[test]
-fn test_split_off_large_random() {
-    let mut data = rand_vec(12);
+fn test_split_off_empty_left() {
+    let mut data = rand_vec(314);
+
+    let mut map = BTreeMap::from_iter(data.clone());
+    let right = map.split_off(&data.iter().min().unwrap().0);
+
+    data.sort();
+    assert!(map.into_iter().eq(None));
+    assert!(right.into_iter().eq(data));
+}
+
+
+#[test]
+fn test_split_off_large_random_sorted() {
+    let mut data = rand_vec(1529);
+    // special case with maximum height.
     data.sort();
 
     let mut map = BTreeMap::from_iter(data.clone());
-    // assert!(map.clone().into_iter().eq(data.clone().into_iter())); // TODO: remove
+    let key = data[data.len() / 2].0;
+    let right = map.split_off(&key);
 
-    let key = data[0].0;
-    // let right =
-    map.split_off(&key);
-
-    // assert!(map.into_iter().eq(data.clone().filter(|x| x.0 < key)));
-    // assert!(right.into_iter().eq(data.filter(|x| x.0 >= key)));
+    assert!(map.into_iter().eq(data.clone().into_iter().filter(|x| x.0 < key)));
+    assert!(right.into_iter().eq(data.into_iter().filter(|x| x.0 >= key)));
 }
-
-/*#[test]
-fn test_split_off_small_random() {
-
-}*/
 
 mod bench {
     use std::collections::BTreeMap;

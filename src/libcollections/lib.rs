@@ -28,7 +28,7 @@
 
 #![cfg_attr(test, allow(deprecated))] // rand
 #![cfg_attr(not(test), feature(slice_binary_search_by_key))] // impl [T]
-// #![cfg_attr(not(stage0), deny(warnings))] // TO_DO: return after tests.
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(alloc)]
 #![feature(allow_internal_unstable)]
