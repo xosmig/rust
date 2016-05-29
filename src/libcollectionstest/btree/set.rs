@@ -304,11 +304,11 @@ fn rand_data(len: usize) -> Vec<u32> {
 fn test_split_off_empty_right() {
     let mut data = rand_data(173);
 
-    let mut map = BTreeSet::from_iter(data.clone());
-    let right = map.split_off(data.iter().max().unwrap() + 1);
+    let mut set = BTreeSet::from_iter(data.clone());
+    let right = set.split_off(&(data.iter().max().unwrap() + 1));
 
     data.sort();
-    assert!(map.into_iter().eq(data));
+    assert!(set.into_iter().eq(data));
     assert!(right.into_iter().eq(None));
 }
 
@@ -316,11 +316,11 @@ fn test_split_off_empty_right() {
 fn test_split_off_empty_left() {
     let mut data = rand_data(314);
 
-    let mut map = BTreeSet::from_iter(data.clone());
-    let right = map.split_off(data.iter().min().unwrap());
+    let mut set = BTreeSet::from_iter(data.clone());
+    let right = set.split_off(data.iter().min().unwrap());
 
     data.sort();
-    assert!(map.into_iter().eq(None));
+    assert!(set.into_iter().eq(None));
     assert!(right.into_iter().eq(data));
 }
 
@@ -330,10 +330,10 @@ fn test_split_off_large_random_sorted() {
     // special case with maximum height.
     data.sort();
 
-    let mut map = BTreeSet::from_iter(data.clone());
+    let mut set = BTreeSet::from_iter(data.clone());
     let key = data[data.len() / 2];
-    let right = map.split_off(&key);
+    let right = set.split_off(&key);
 
-    assert!(map.into_iter().eq(data.clone().into_iter().filter(|x| x < key)));
-    assert!(right.into_iter().eq(data.into_iter().filter(|x| x >= key)));
+    assert!(set.into_iter().eq(data.clone().into_iter().filter(|x| *x < key)));
+    assert!(right.into_iter().eq(data.into_iter().filter(|x| *x >= key)));
 }
