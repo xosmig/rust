@@ -501,7 +501,7 @@ create_append_test!(test_append_181, 181);
 create_append_test!(test_append_239, 239);
 create_append_test!(test_append_1700, 1700);
 
-fn rand_vec(len: usize) -> Vec<(u32, u32)> {
+fn rand_data(len: usize) -> Vec<(u32, u32)> {
     let mut rng = DeterministicRng::new();
     Vec::from_iter(
         (0..len).map(|_| (rng.next(), rng.next()))
@@ -510,7 +510,7 @@ fn rand_vec(len: usize) -> Vec<(u32, u32)> {
 
 #[test]
 fn test_split_off_empty_right() {
-    let mut data = rand_vec(173);
+    let mut data = rand_data(173);
 
     let mut map = BTreeMap::from_iter(data.clone());
     let right = map.split_off(&(data.iter().max().unwrap().0 + 1));
@@ -522,7 +522,7 @@ fn test_split_off_empty_right() {
 
 #[test]
 fn test_split_off_empty_left() {
-    let mut data = rand_vec(314);
+    let mut data = rand_data(314);
 
     let mut map = BTreeMap::from_iter(data.clone());
     let right = map.split_off(&data.iter().min().unwrap().0);
@@ -532,10 +532,9 @@ fn test_split_off_empty_left() {
     assert!(right.into_iter().eq(data));
 }
 
-
 #[test]
 fn test_split_off_large_random_sorted() {
-    let mut data = rand_vec(1529);
+    let mut data = rand_data(1529);
     // special case with maximum height.
     data.sort();
 
